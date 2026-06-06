@@ -1,32 +1,85 @@
 CREATE VIEW analytics.sku_price_points_v2 AS
 WITH bounds AS (
-         SELECT max(base_order_rows_v2.order_date) AS period_end,
-            max(base_order_rows_v2.order_date) - '59 days'::interval AS period_start
-           FROM analytics.base_order_rows_v2
-        ), period_orders AS (
-         SELECT b."userId",
-            b."sellerConnectionId",
-            b.marketplace,
-            b."marketplaceId",
-            b.sku,
-            b.asin,
-            b.order_date,
-            b.price,
-            b.quantity,
-            b.currency_code,
-            b.revenue,
-            b.cogs,
-            b.fba_fee,
-            b.amazon_fee_percent,
-            b.amazon_fee,
-            b.profit_before_ads,
-            b.ads_spend_allocated,
-            b.profit,
-            b.your_price,
-            b.has_complete_costs
-           FROM analytics.base_order_rows_v2 b
-             CROSS JOIN bounds x
-          WHERE b.order_date >= x.period_start AND b.order_date <= x.period_end AND b.sku IS NOT NULL AND b.quantity IS NOT NULL AND b.price > 0::numeric
+
+    SELECT
+
+        "userId",
+
+        marketplace,
+
+        MAX(order_date) AS period_end,
+
+        MAX(order_date) - INTERVAL '59 days' AS period_start
+
+    FROM analytics.base_order_rows_v2
+
+    WHERE marketplace IS NOT NULL
+
+    GROUP BY "userId", marketplace
+
+),
+
+period_orders AS (
+
+    SELECT
+
+        b."userId",
+
+        b."sellerConnectionId",
+
+        b.marketplace,
+
+        b."marketplaceId",
+
+        b.sku,
+
+        b.asin,
+
+        b.order_date,
+
+        b.price,
+
+        b.quantity,
+
+        b.currency_code,
+
+        b.revenue,
+
+        b.cogs,
+
+        b.fba_fee,
+
+        b.amazon_fee_percent,
+
+        b.amazon_fee,
+
+        b.profit_before_ads,
+
+        b.ads_spend_allocated,
+
+        b.profit,
+
+        b.your_price,
+
+        b.has_complete_costs
+
+    FROM analytics.base_order_rows_v2 b
+
+    JOIN bounds x
+
+      ON x."userId" = b."userId"
+
+     AND x.marketplace = b.marketplace
+
+    WHERE b.order_date >= x.period_start
+
+      AND b.order_date <= x.period_end
+
+      AND b.sku IS NOT NULL
+
+      AND b.quantity IS NOT NULL
+
+      AND b.price > 0
         ), daily_price AS (
          SELECT period_orders."userId",
             period_orders."sellerConnectionId",

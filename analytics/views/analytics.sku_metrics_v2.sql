@@ -1,14 +1,20 @@
 CREATE VIEW analytics.sku_metrics_v2 AS
 WITH bounds AS (
     SELECT
+        "userId",
+        marketplace,
         MAX(order_date) AS period_end,
         MAX(order_date) - INTERVAL '59 days' AS period_start
     FROM analytics.base_order_rows_v2
+    WHERE marketplace IS NOT NULL
+    GROUP BY "userId", marketplace
 ),
 period_orders AS (
     SELECT b.*
     FROM analytics.base_order_rows_v2 b
-    CROSS JOIN bounds x
+    JOIN bounds x
+      ON x."userId" = b."userId"
+     AND x.marketplace = b.marketplace
     WHERE b.order_date >= x.period_start
       AND b.order_date <= x.period_end
       AND b.sku IS NOT NULL

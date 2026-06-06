@@ -140,8 +140,6 @@ SELECT
 
     bp.revenue_opportunity_method,
 
-    bp.current_revenue_60d,
-
     bp.revenue_opportunity_60d,
 
     bp.best_revenue_candidate_type,
