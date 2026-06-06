@@ -56,25 +56,41 @@ SELECT
         ELSE 'benchmark_25pct'
     END AS revenue_opportunity_method,
 
-    CASE
-        WHEN br.candidate_price IS NOT NULL THEN
-            GREATEST(
-                br.expected_revenue_60d - sm.revenue,
-                0
-            )
-        ELSE
-            sm.revenue * 0.25
-    END AS raw_revenue_opportunity_60d,
+CASE
 
-    CASE
-        WHEN br.candidate_price IS NOT NULL THEN
-            GREATEST(
-                br.expected_revenue_60d - sm.revenue,
-                0
-            )
-        ELSE
-            sm.revenue * 0.25 * sm.benchmark_confidence
-    END AS revenue_opportunity_60d,
+    WHEN br.candidate_price IS NOT NULL THEN
+
+        GREATEST(
+
+            br.expected_revenue_60d - sm.revenue,
+
+            0
+
+        )
+
+    ELSE
+
+        sm.revenue * 0.25
+
+END AS raw_revenue_opportunity_60d,
+
+CASE
+
+    WHEN br.candidate_price IS NOT NULL THEN
+
+        GREATEST(
+
+            br.expected_revenue_60d - sm.revenue,
+
+            0
+
+        )
+
+    ELSE
+
+        sm.revenue * 0.25 * sm.benchmark_confidence
+
+END AS revenue_opportunity_60d,
 
     CASE
         WHEN br.candidate_price IS NOT NULL THEN 'model_based'

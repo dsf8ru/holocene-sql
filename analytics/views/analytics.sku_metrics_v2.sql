@@ -115,9 +115,9 @@ scored AS (
         ) AS pricing_evidence_score,
 
         CASE
-            WHEN COALESCE(pc.modeling_price_points, 0) <= 1 THEN 0.40
-            WHEN COALESCE(pc.modeling_price_points, 0) = 2 THEN 0.60
-            WHEN COALESCE(pc.modeling_price_points, 0) = 3 THEN 0.80
+            WHEN COALESCE(pc.modeling_price_points, 0) <= 1 THEN 0.50
+            WHEN COALESCE(pc.modeling_price_points, 0) = 2 THEN 0.70
+            WHEN COALESCE(pc.modeling_price_points, 0) = 3 THEN 0.85
             ELSE 1.00
         END AS benchmark_confidence,
 
