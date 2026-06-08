@@ -32,9 +32,21 @@ curve AS (
             ELSE 9
         END AS modeled_candidate_count,
 
-        MIN(price) AS min_modeling_price,
-        MAX(price) AS max_modeling_price,
+MIN(price) AS min_modeling_price,
 
+MAX(price) AS max_modeling_price,
+(
+    ARRAY_AGG(
+        price
+        ORDER BY avg_daily_revenue_at_price DESC, price DESC
+    )
+)[1] AS best_observed_price,
+(
+    ARRAY_AGG(
+        avg_daily_revenue_at_price
+        ORDER BY avg_daily_revenue_at_price DESC, price DESC
+    )
+)[1] AS best_observed_daily_revenue,
         GREATEST(
             0.10,
             ((MIN(price) + MAX(price)) / 2.0) * 0.01
@@ -99,39 +111,41 @@ observed_candidates AS (
        AND c.marketplace = mp.marketplace
        AND c.sku = mp.sku
 ),
+
 price_grid AS (
     SELECT
         c.*,
         gs.idx,
 
         CASE
-
-            WHEN c.demand_slope > 0 THEN
-
+            WHEN c.best_observed_price = c.max_modeling_price THEN
                 c.max_modeling_price
                 +
                 (
                     (c.max_modeling_price * 1.10)
                     - c.max_modeling_price
                 )
-                *
-                gs.idx::numeric
-                /
-                (c.modeled_candidate_count + 1)::numeric
+                * gs.idx::numeric
+                / (c.modeled_candidate_count + 1)::numeric
 
-            ELSE
-
+            WHEN c.best_observed_price = c.min_modeling_price THEN
                 (c.min_modeling_price * 0.90)
                 +
                 (
-                    (c.max_modeling_price * 1.25)
+                    c.min_modeling_price
                     - (c.min_modeling_price * 0.90)
                 )
-                *
-                gs.idx::numeric
-                /
-                (c.modeled_candidate_count + 1)::numeric
+                * gs.idx::numeric
+                / (c.modeled_candidate_count + 1)::numeric
 
+            ELSE
+                c.min_modeling_price
+                +
+                (
+                    c.max_modeling_price - c.min_modeling_price
+                )
+                * gs.idx::numeric
+                / (c.modeled_candidate_count + 1)::numeric
         END AS raw_candidate_price
 
     FROM curve c
@@ -140,6 +154,7 @@ price_grid AS (
         c.modeled_candidate_count
     ) AS gs(idx)
 ),
+
 modeled_candidates AS (
     SELECT DISTINCT ON (
         "userId",
