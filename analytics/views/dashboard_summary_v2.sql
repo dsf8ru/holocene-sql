@@ -1,4 +1,4 @@
-CREATE VIEW analytics.dashboard_summary_v2 AS
+CREATE OR REPLACE VIEW analytics.dashboard_summary_v2 AS
 SELECT
     bp."userId",
     bp."sellerConnectionId",
