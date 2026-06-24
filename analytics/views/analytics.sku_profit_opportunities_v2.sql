@@ -39,14 +39,14 @@ CREATE OR REPLACE VIEW analytics.sku_profit_opportunities_v2 AS
             pc.fba_fee,
             pc.amazon_fee_percent,
             COALESCE(dp.ads_spend, 0::numeric) AS ads_spend_60d,
-            COALESCE(dp.units_sold, bp.units_sold::numeric) AS actual_units_60d,
-            COALESCE(dp.revenue, bp.current_revenue_60d) AS actual_revenue_60d,
+            COALESCE(NULLIF(dp.units_sold, 0), bp.units_sold::numeric) AS actual_units_60d,
+            COALESCE(NULLIF(dp.revenue, 0), bp.current_revenue_60d) AS actual_revenue_60d,
                 CASE
                     WHEN pc.cogs IS NOT NULL AND pc.fba_fee IS NOT NULL AND pc.amazon_fee_percent IS NOT NULL THEN true
                     ELSE false
                 END AS has_complete_cost_data,
                 CASE
-                    WHEN pc.cogs IS NOT NULL AND pc.fba_fee IS NOT NULL AND pc.amazon_fee_percent IS NOT NULL THEN COALESCE(dp.revenue, bp.current_revenue_60d) - COALESCE(dp.units_sold, bp.units_sold::numeric) * pc.cogs - COALESCE(dp.units_sold, bp.units_sold::numeric) * pc.fba_fee - COALESCE(dp.revenue, bp.current_revenue_60d) * pc.amazon_fee_percent / 100.0 - COALESCE(dp.ads_spend, 0::numeric)
+                    WHEN pc.cogs IS NOT NULL AND pc.fba_fee IS NOT NULL AND pc.amazon_fee_percent IS NOT NULL THEN COALESCE(NULLIF(dp.revenue, 0), bp.current_revenue_60d) - COALESCE(NULLIF(dp.units_sold, 0), bp.units_sold::numeric) * pc.cogs - COALESCE(NULLIF(dp.units_sold, 0), bp.units_sold::numeric) * pc.fba_fee - COALESCE(NULLIF(dp.revenue, 0), bp.current_revenue_60d) * pc.amazon_fee_percent / 100.0 - COALESCE(dp.ads_spend, 0::numeric)
                     ELSE NULL::numeric
                 END AS current_profit_after_ads_60d
            FROM analytics.sku_best_prices_v2 bp
@@ -109,7 +109,26 @@ CREATE OR REPLACE VIEW analytics.sku_profit_opportunities_v2 AS
     b.has_complete_cost_data,
         CASE
             WHEN rp.expected_profit_60d IS NOT NULL AND b.current_profit_after_ads_60d IS NOT NULL THEN GREATEST(rp.expected_profit_60d - b.current_profit_after_ads_60d, 0::numeric)
-            WHEN b.has_complete_cost_data = true AND b.current_profit_after_ads_60d IS NOT NULL AND b.current_revenue_60d > 0::numeric AND b.revenue_opportunity_60d > 0::numeric THEN GREATEST(b.revenue_opportunity_60d * GREATEST(b.current_profit_after_ads_60d / b.current_revenue_60d, 0::numeric), 0::numeric)
+            WHEN b.has_complete_cost_data = true
+             AND b.current_profit_after_ads_60d IS NOT NULL
+             AND b.current_revenue_60d > 0::numeric
+             AND b.revenue_opportunity_60d > 0::numeric
+             AND b.actual_units_60d > 0::numeric
+            THEN GREATEST(
+                b.revenue_opportunity_60d
+                *
+                GREATEST(
+                    (
+                        (b.actual_revenue_60d / NULLIF(b.actual_units_60d, 0::numeric))
+                        - b.cogs
+                        - b.fba_fee
+                        - ((b.actual_revenue_60d / NULLIF(b.actual_units_60d, 0::numeric)) * b.amazon_fee_percent / 100.0)
+                    )
+                    / NULLIF((b.actual_revenue_60d / NULLIF(b.actual_units_60d, 0::numeric)), 0::numeric),
+                    0::numeric
+                ),
+                0::numeric
+            )
             ELSE NULL::numeric
         END AS profit_opportunity_60d
    FROM base b
